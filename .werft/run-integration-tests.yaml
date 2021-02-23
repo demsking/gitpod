@@ -21,5 +21,8 @@ pod:
     - -c
     - |
       apk add moreutils
+
       /entrypoint.sh -kubeconfig=in-cluster -namespace={{ .Annotations.namespace }} 2>&1 | ts "[int-tests] "
+      RC=$?
       echo "[int-tests|DONE]"
+      exit $RC

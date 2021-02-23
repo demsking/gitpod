@@ -1,0 +1,22 @@
+args:
+- name: version
+  desc: "The version of the integration tests to use"
+  required: true
+- name: namespace
+  desc: "The namespace to run the integration test against"
+  required: true
+pod:
+  serviceAccount: werft
+  nodeSelector:
+    dev/workload: workload
+  imagePullSecrets:
+  - name: eu-gcr-io-pull-secret
+  containers:
+  - name: tests
+    image: eu.gcr.io/gitpod-core-dev/build/integration-tests:{{ .Annotations.version }}
+    workingDir: /workspace
+    imagePullPolicy: Always
+    command:
+    - /entrypoint.sh
+    - -kubeconfig=in-cluster
+    - -namespace={{ .Annotations.namespace }}

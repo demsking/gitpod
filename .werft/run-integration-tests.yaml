@@ -17,6 +17,9 @@ pod:
     workingDir: /workspace
     imagePullPolicy: Always
     command:
-    - /entrypoint.sh
-    - -kubeconfig=in-cluster
-    - -namespace={{ .Annotations.namespace }}
+    - sh
+    - -c
+    - |
+      apk add moreutils
+      /entrypoint.sh -kubeconfig=in-cluster -namespace={{ .Annotations.namespace }} 2>&1 | ts "[int-tests] "
+      echo "[int-tests|DONE]"

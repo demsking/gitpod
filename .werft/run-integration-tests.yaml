@@ -60,6 +60,7 @@ pod:
       echo "[prep] receiving config..."
       mkdir /root/.config
       cp -R /config/gcloud /root/.config/gcloud
+      export GOOGLE_APPLICATION_CREDENTIALS=/config/gcloud/legacy_credentials/gitpod-deployer@gitpod-core-dev.iam.gserviceaccount.com/adc.json
       echo "[prep] received config."
       echo "[prep|DONE]"
 

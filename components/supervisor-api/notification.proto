@@ -12,12 +12,20 @@ option go_package = ".;api";
 
 service NotificationService {
     rpc Notify(NotifyRequest) returns (NotifyResponse) {
-        // rest
+        option (google.api.http) = {
+            put: "/v1/notification/notify"
+        };
     }
-    rpc Subscribe(SubscribeRequest) returns (stream SubscribeResult) {} 
-    // rest
-    rpc Respond(RespondRequest) returns (RespondResult) {}
-    // rest
+    rpc Subscribe(SubscribeRequest) returns (stream SubscribeResult) {
+        option (google.api.http) = {
+            get: "/v1/notification/subscribe"
+        };
+    }
+    rpc Respond(RespondRequest) returns (RespondResult) {
+        option (google.api.http) = {
+            put: "/v1/notification/respond"
+        };
+    }
 }
 
 message NotifyRequest {

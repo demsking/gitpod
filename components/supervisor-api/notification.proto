@@ -1,0 +1,47 @@
+// Copyright (c) 2020 Gitpod GmbH. All rights reserved.
+// Licensed under the GNU Affero General Public License (AGPL).
+// See License-AGPL.txt in the project root for license information.
+
+syntax = "proto3";
+
+package supervisor;
+
+import "google/api/annotations.proto";
+
+option go_package = ".;api";
+
+service NotificationService {
+    rpc Notify(NotifyRequest) returns (NotifyResponse) {
+        // rest
+    }
+    rpc Subscribe(SubscribeRequest) returns (stream SubscribeResult) {} 
+    // rest
+    rpc Respond(RespondRequest) returns (RespondResult) {}
+    // rest
+}
+
+message NotifyRequest {
+    string title = 1;
+    string message = 2;
+    // if actions are empty, Notify will return immediately
+    repeated string actions = 3;
+}
+
+message NotifyResponse {
+    // action chosen by the user
+    string action = 1;
+}
+
+message SubscribeRequest {}
+
+message SubscribeResult {
+    uint64 requestId = 1;
+    NotifyRequest request = 2;
+}
+
+message RespondRequest {
+    uint64 requestId = 1;
+    NotifyResponse response = 2;
+}
+
+message RespondResult {}

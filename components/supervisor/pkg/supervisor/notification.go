@@ -112,17 +112,17 @@ func (srv *NotificationService) Respond(ctx context.Context, req *api.RespondReq
 	var pending = srv.pendingNotifications[req.RequestId]
 	if pending == nil {
 		log.Log.WithField("requestId", req.RequestId).Info("Invalid or late response to notification")
-	} else {
-		if isActionAllowed(req.Response.Action, pending.message.Request) {
-			delete(srv.pendingNotifications, req.RequestId)
-			pending.responseChannel <- req.Response
-		} else {
-			log.Log.WithFields(map[string]interface{}{
-				"Notification": pending.message,
-				"Action":       req.Response.Action,
-			}).Error("Invalid user action on notification")
-		}
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid or late response to notification")
 	}
+	if !isActionAllowed(req.Response.Action, pending.message.Request) {
+		log.Log.WithFields(map[string]interface{}{
+			"Notification": pending.message,
+			"Action":       req.Response.Action,
+		}).Error("Invalid user action on notification")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid user action on notification")
+	}
+	delete(srv.pendingNotifications, req.RequestId)
+	pending.responseChannel <- req.Response
 	return &api.RespondResult{}, nil
 }
 

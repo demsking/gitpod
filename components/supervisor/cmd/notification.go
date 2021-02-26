@@ -35,7 +35,7 @@ var notifyCmd = &cobra.Command{
 		if err != nil {
 			log.WithError(err).Fatal("cannot notify client")
 		}
-		log.Info("User answered with '%s'", response.Action)
+		log.WithField("action", response.Action).Info("User answered")
 	},
 }
 

@@ -98,7 +98,7 @@ func (srv *NotificationService) Subscribe(req *api.SubscribeRequest, resp api.No
 	for _, pending := range srv.pendingNotifications {
 		var err = resp.Send(pending.message)
 		if err != nil {
-			return status.Errorf(codes.FailedPrecondition, "Cannot subscribe new subscriber as sending pending notification failed. %w", err)
+			return status.Errorf(codes.FailedPrecondition, "Cannot subscribe new subscriber as sending pending notification failed. %s", err)
 		}
 	}
 	srv.subscribers = append(srv.subscribers, resp)

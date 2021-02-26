@@ -6,7 +6,6 @@ package supervisor
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/gitpod-io/gitpod/common-go/log"
@@ -24,14 +23,14 @@ const (
 // NotificationService implements the notification service API
 type NotificationService struct {
 	mutex                sync.Mutex
-	subscribers          []*api.NotificationService_SubscribeServer
+	subscribers          []api.NotificationService_SubscribeServer
 	nextNotificationId   uint64
 	pendingNotifications map[uint64]*pendingNotification
 }
 
 type pendingNotification struct {
 	message         *api.SubscribeResult
-	responseChannel chan api.NotifyResponse
+	responseChannel chan *api.NotifyResponse
 }
 
 // RegisterGRPC registers a gRPC service
@@ -49,7 +48,21 @@ func (srv *NotificationService) Notify(ctx context.Context, req *api.NotifyReque
 	if srv.nextNotificationId >= maxPendingNotifications {
 		return nil, status.Error(codes.Internal, "Max number of pending notifications exceeded")
 	}
+	var channel = srv.notifySubscribers(req)
+	if channel == nil {
+		return &api.NotifyResponse{}, nil
+	}
+	select {
+	case resp := <-channel:
+		return resp, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func (srv *NotificationService) notifySubscribers(req *api.NotifyRequest) chan *api.NotifyResponse {
 	srv.mutex.Lock()
+	defer srv.mutex.Unlock()
 	var (
 		requestId = srv.nextNotificationId
 		message   = &api.SubscribeResult{
@@ -61,28 +74,21 @@ func (srv *NotificationService) Notify(ctx context.Context, req *api.NotifyReque
 	srv.nextNotificationId++
 	for i, subscriber := range srv.subscribers {
 		// TODO: why do I have to dereference here?
-		var err = (*subscriber).Send(message)
+		var err = subscriber.Send(message)
 		if err != nil {
 			staleSubscribers = append(staleSubscribers, i)
 		}
 	}
 	srv.removeSubscribers(staleSubscribers)
 	if len(req.Actions) == 0 {
-		srv.mutex.Unlock()
-		return &api.NotifyResponse{}, nil
+		return nil
 	}
-	var channel = make(chan api.NotifyResponse)
+	var channel = make(chan *api.NotifyResponse)
 	srv.pendingNotifications[requestId] = &pendingNotification{
 		message:         message,
 		responseChannel: channel,
 	}
-	srv.mutex.Unlock()
-
-	firstResponse, ok := <-channel
-	if !ok {
-		return nil, status.Error(codes.Internal, "Error reading user reaction on notification from channel")
-	}
-	return &firstResponse, nil
+	return channel
 }
 
 // subscribes to notifications that are sent to the supervisor
@@ -92,10 +98,10 @@ func (srv *NotificationService) Subscribe(req *api.SubscribeRequest, resp api.No
 	for _, pending := range srv.pendingNotifications {
 		var err = resp.Send(pending.message)
 		if err != nil {
-			return fmt.Errorf("Cannot subscribe new subscriber as sending pending notification failed. %w", err)
+			return status.Errorf(codes.FailedPrecondition, "Cannot subscribe new subscriber as sending pending notification failed. %w", err)
 		}
 	}
-	srv.subscribers = append(srv.subscribers, &resp)
+	srv.subscribers = append(srv.subscribers, resp)
 	return nil
 }
 
@@ -105,11 +111,11 @@ func (srv *NotificationService) Respond(ctx context.Context, req *api.RespondReq
 	defer srv.mutex.Unlock()
 	var pending = srv.pendingNotifications[req.RequestId]
 	if pending == nil {
-		log.Log.Infof("Invalid or late response to notification %d", req.RequestId)
+		log.Log.WithField("requestId", req.RequestId).Info("Invalid or late response to notification")
 	} else {
 		if isActionAllowed(req.Response.Action, pending.message.Request) {
 			delete(srv.pendingNotifications, req.RequestId)
-			pending.responseChannel <- *req.Response
+			pending.responseChannel <- req.Response
 		} else {
 			log.Log.WithFields(map[string]interface{}{
 				"Notification": pending.message,
@@ -130,19 +136,20 @@ func isActionAllowed(action string, req *api.NotifyRequest) bool {
 }
 
 func (srv *NotificationService) removeSubscribers(indices []int) {
-	if len(indices) > 0 {
-		log.Log.Errorf("Unsubscribing %d stale subscribers", len(indices))
-		var (
-			newSubscribers = make([]*api.NotificationService_SubscribeServer, len(srv.subscribers)-len(indices))
-			j              = 0
-		)
-		for i := range srv.subscribers {
-			if j < len(indices) && i == indices[j] {
-				j++
-			} else {
-				newSubscribers[i-j] = srv.subscribers[i]
-			}
-		}
-		srv.subscribers = newSubscribers
+	if len(indices) == 0 {
+		return
 	}
+	log.Log.Errorf("Unsubscribing %d stale subscribers", len(indices))
+	var (
+		newSubscribers = make([]api.NotificationService_SubscribeServer, len(srv.subscribers)-len(indices))
+		j              = 0
+	)
+	for i := range srv.subscribers {
+		if j < len(indices) && i == indices[j] {
+			j++
+		} else {
+			newSubscribers[i-j] = srv.subscribers[i]
+		}
+	}
+	srv.subscribers = newSubscribers
 }

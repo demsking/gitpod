@@ -166,7 +166,7 @@ func Run(options ...RunOption) {
 		},
 		termMuxSrv,
 		RegistrableTokenService{tokenService},
-		&NotificationService{},
+		NewNotificationService(),
 		&InfoService{cfg: cfg},
 		&ControlService{portsManager: portMgmt},
 	}

@@ -20,6 +20,12 @@ const (
 	maxPendingNotifications = 100
 )
 
+func NewNotificationService() *NotificationService {
+	return &NotificationService{
+		pendingNotifications: make(map[uint64]*pendingNotification),
+	}
+}
+
 // NotificationService implements the notification service API
 type NotificationService struct {
 	mutex                sync.Mutex

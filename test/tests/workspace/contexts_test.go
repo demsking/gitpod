@@ -30,6 +30,12 @@ func TestGitHubContexts(t *testing.T) {
 			ExpectedBranch: "main",
 		},
 		{
+			Name:           "open branch",
+			ContextURL:     "github.com/gitpod-io/gitpod-test-repo/integration-test-1",
+			WorkspaceRoot:  "/workspace/gitpod-test-repo",
+			ExpectedBranch: "integration-test-1",
+		},
+		{
 			Name:           "open issue",
 			ContextURL:     "github.com/gitpod-io/gitpod-test-repo/issues/88",
 			WorkspaceRoot:  "/workspace/gitpod-test-repo",
@@ -39,6 +45,36 @@ func TestGitHubContexts(t *testing.T) {
 			Name:           "open tag",
 			ContextURL:     "github.com/gitpod-io/gitpod-test-repo/tree/integration-test-context-tag",
 			WorkspaceRoot:  "/workspace/gitpod-test-repo",
+			ExpectedBranch: "HEAD",
+		},
+	}
+	runContextTests(t, tests)
+}
+
+func TestGitLabContexts(t *testing.T) {
+	tests := []ContextTest{
+		{
+			Name:           "open repository",
+			ContextURL:     "gitlab.com/AlexTugarev/gp-test",
+			WorkspaceRoot:  "/workspace/gp-test",
+			ExpectedBranch: "main",
+		},
+		{
+			Name:           "open branch",
+			ContextURL:     "gitlab.com/AlexTugarev/gp-test/tree/wip",
+			WorkspaceRoot:  "/workspace/gp-test",
+			ExpectedBranch: "wip",
+		},
+		{
+			Name:           "open issue",
+			ContextURL:     "gitlab.com/AlexTugarev/gp-test/issues/1",
+			WorkspaceRoot:  "/workspace/gp-test",
+			ExpectedBranch: "main",
+		},
+		{
+			Name:           "open tag",
+			ContextURL:     "gitlab.com/AlexTugarev/gp-test/merge_requests/2",
+			WorkspaceRoot:  "/workspace/gp-test",
 			ExpectedBranch: "HEAD",
 		},
 	}

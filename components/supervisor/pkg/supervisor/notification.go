@@ -55,7 +55,7 @@ func (srv *NotificationService) Notify(ctx context.Context, req *api.NotifyReque
 		return nil, status.Error(codes.Internal, "Max number of pending notifications exceeded")
 	}
 	var channel = srv.notifySubscribers(req)
-	if channel == nil {
+	if len(req.Actions) == 0 {
 		return &api.NotifyResponse{}, nil
 	}
 	select {
@@ -86,9 +86,6 @@ func (srv *NotificationService) notifySubscribers(req *api.NotifyRequest) chan *
 		}
 	}
 	srv.removeSubscribers(staleSubscribers)
-	if len(req.Actions) == 0 {
-		return nil
-	}
 	var channel = make(chan *api.NotifyResponse)
 	srv.pendingNotifications[requestId] = &pendingNotification{
 		message:         message,
@@ -101,10 +98,13 @@ func (srv *NotificationService) notifySubscribers(req *api.NotifyRequest) chan *
 func (srv *NotificationService) Subscribe(req *api.SubscribeRequest, resp api.NotificationService_SubscribeServer) error {
 	srv.mutex.Lock()
 	defer srv.mutex.Unlock()
-	for _, pending := range srv.pendingNotifications {
+	for id, pending := range srv.pendingNotifications {
 		var err = resp.Send(pending.message)
 		if err != nil {
 			return status.Errorf(codes.FailedPrecondition, "Cannot subscribe new subscriber as sending pending notification failed. %s", err)
+		}
+		if len(pending.message.Request.Actions) == 0 {
+			delete(srv.pendingNotifications, id)
 		}
 	}
 	srv.subscribers = append(srv.subscribers, resp)
